@@ -68,18 +68,47 @@ class CustomImageDataset(Dataset):
         return image, label
 
 class MLPClassifier(nn.Module):
-    def __init__(self, input_size=64*64*3, dropout = 0.0, num_classes=10):
+    def __init__(self, input_size=64*64*3, dropout = 0.0, num_classes=10, init_type="xavier"):
         super().__init__()
+
+        self.init_type=init_type
         self.model = nn.Sequential(
             nn.Flatten(),
+
             nn.Linear(input_size, 512),
-            nn.Dropout(dropout),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Linear(512, 128),
             nn.Dropout(dropout),
+            
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Linear(128, num_classes)
+            nn.Dropout(dropout),
+
+            nn.Linear(256, num_classes)
         )
+        #inicializacion manual de pesos
+        self.init_weights()
+    # def init_weights(self):
+    #      for m in self.modules():
+    #          if isinstance(m, nn.Linear):
+    #              nn.init.kaiming_normal_(m.weight)
+    #              nn.init.zeros_(m.bias)
+    def init_weights(self):
+       for m in self.modules():
+           if isinstance(m, nn.Linear):
+               if self.init_type == "he":
+                   nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+               elif self.init_type == "xavier":
+                   nn.init.xavier_uniform_(m.weight)
+               elif self.init_type == "uniform":
+                   # rango típico conservador; podés ajustarlo
+                   nn.init.uniform_(m.weight, a=-0.05, b=0.05)
+               else:
+                   raise ValueError(f"init_type desconocido: {self.init_type}")
+              
+               if m.bias is not None:
+                   nn.init.zeros_(m.bias)
 
     def forward(self, x):
         return self.model(x)
